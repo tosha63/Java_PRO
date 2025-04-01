@@ -9,7 +9,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target(METHOD)
 @Retention(RUNTIME)
 public @interface Test {
-    @Min(value = 1)
-    @Max(value = 10)
     int priority() default 5;
 }

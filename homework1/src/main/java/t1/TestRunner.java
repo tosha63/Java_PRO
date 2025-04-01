@@ -5,18 +5,15 @@ import t1.annotation.AfterTest;
 import t1.annotation.BeforeSuite;
 import t1.annotation.BeforeTest;
 import t1.annotation.CsvSource;
-import t1.annotation.Max;
-import t1.annotation.Min;
 import t1.annotation.Test;
 import t1.example.AnnotationTest;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.stream.Stream;
+import java.util.Objects;
 
 public class TestRunner {
 
@@ -29,103 +26,91 @@ public class TestRunner {
     }
 
     public static void runTests(Class<?> clazz) {
-        checkMethodCount(clazz, BeforeSuite.class);
-        checkMethodCount(clazz, AfterSuite.class);
-        invokeStaticMethod(clazz, BeforeSuite.class);
-        invokeMethodWithTestAnnotation(clazz);
-        invokeStaticMethod(clazz, AfterSuite.class);
-        invokeMethodWithCsvSourceAnnotation(clazz);
+        try {
+            Object object = clazz.getConstructor().newInstance();
+            final var beforeSuiteMethod = getSuiteMethod(clazz, BeforeSuite.class);
+            final var afterSuiteMethod = getSuiteMethod(clazz, AfterSuite.class);
+            invokeStaticMethod(beforeSuiteMethod, BeforeSuite.class, object);
+            invokeMethodWithTestAnnotation(clazz, object);
+            invokeStaticMethod(afterSuiteMethod, AfterSuite.class, object);
+            invokeMethodWithCsvSourceAnnotation(clazz, object);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 
-    private static void checkMethodCount(Class<?> clazz, Class<? extends Annotation> annotationClass) {
-        long countMethod = getStreamFilterStaticMethod(clazz, annotationClass)
-                .count();
-        if (countMethod > MAX_COUNT_METHOD) {
-            throw new RuntimeException(String.format("Количество статических методов с аннотацией %s не равно одному%n", annotationClass.getSimpleName()));
+    private static Method getSuiteMethod(Class<?> clazz, Class<? extends Annotation> annotationClass) {
+        final var methods = Arrays.stream(clazz.getDeclaredMethods())
+                                  .filter(method -> method.isAnnotationPresent(annotationClass))
+                                  .filter(method -> Modifier.isStatic(method.getModifiers()))
+                                  .toList();
+        if (methods.size() > MAX_COUNT_METHOD) {
+            throw new IllegalStateException(String.format("Количество статических методов с аннотацией %s не равно одному%n", annotationClass.getSimpleName()));
         } else {
-            getStreamFilterStaticMethod(clazz, annotationClass)
-                    .findFirst()
-                    .ifPresent(method -> System.out.printf("Метод помеченный аннотацией %s с именем %s количество:%s%n", annotationClass.getSimpleName(), method.getName(), countMethod));
+            if (!methods.isEmpty()) {
+                final var method = methods.get(0);
+                System.out.printf("Метод помеченный аннотацией %s с именем %s количество:%s%n", annotationClass.getSimpleName(), method.getName(), methods.size());
+                return method;
+            } else {
+                return null;
+            }
         }
     }
 
-    private static void invokeStaticMethod(Class<?> clazz, Class<? extends Annotation> annotationClass) {
-        getStreamFilterStaticMethod(clazz, annotationClass)
-                .findFirst()
-                .ifPresent(method -> {
-                    System.out.printf("Выполняется метод с аннотацией %s с именем: %s%n", method.getAnnotation(annotationClass)
-                                                                                                .annotationType()
-                                                                                                .getSimpleName(),
-                                      method.getName());
-                    try {
-                        method.invoke(clazz.getConstructor().newInstance());
-                    } catch (IllegalAccessException |
-                             InvocationTargetException |
-                             NoSuchMethodException |
-                             InstantiationException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-
+    private static void invokeStaticMethod(Method method, Class<? extends Annotation> annotationClass, Object object) {
+        if (Objects.nonNull(method)) {
+            System.out.printf("Выполняется метод с аннотацией %s с именем: %s%n",
+                              method.getAnnotation(annotationClass)
+                                    .annotationType()
+                                    .getSimpleName(),
+                              method.getName());
+            try {
+                method.invoke(object);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    private static Stream<Method> getStreamFilterStaticMethod(Class<?> clazz, Class<? extends Annotation> annotationClass) {
-        return Arrays.stream(clazz.getDeclaredMethods())
-                     .filter(method -> method.isAnnotationPresent(annotationClass))
-                     .filter(method -> Modifier.isStatic(method.getModifiers()));
-    }
-
-    private static void invokeMethodWithTestAnnotation(Class<?> clazz) {
+    private static void invokeMethodWithTestAnnotation(Class<?> clazz, Object object) {
+        final var beforeTestMethod = getBeforeAndAfterTestMethod(clazz, BeforeTest.class);
+        final var afterTestMethod = getBeforeAndAfterTestMethod(clazz, AfterTest.class);
         Arrays.stream(clazz.getDeclaredMethods())
               .filter(method -> method.isAnnotationPresent(Test.class))
               .sorted(Comparator.comparingInt(method -> method.getAnnotation(Test.class).priority()))
               .forEach(method -> {
                   final var testAnnotation = method.getAnnotation(Test.class);
-                  Method priority;
-                  try {
-                      priority = testAnnotation.annotationType().getDeclaredMethod("priority");
-                  } catch (NoSuchMethodException e) {
-                      throw new RuntimeException(e);
+                  final var testAnnotationName = testAnnotation.annotationType()
+                                                               .getSimpleName();
+                  final var priority = testAnnotation.priority();
+                  if (priority < MIN_PRIORITY || priority > MAX_PRIORITY) {
+                      throw new RuntimeException("Значение priority не входит в диапазон от 1 до 10");
                   }
-                  final var minAnnotation = priority.getAnnotation(Min.class);
-                  final var maxAnnotation = priority.getAnnotation(Max.class);
-                  if (minAnnotation.value() < MIN_PRIORITY || maxAnnotation.value() > MAX_PRIORITY) {
-                      throw new RuntimeException("Диапазон значений priority не входит от 1 до 10");
-                  }
-                  System.out.printf("Выполняется метод с аннотацией %s с именем: %s и приоритетом: %s%n", testAnnotation.annotationType()
-                                                                                                                        .getSimpleName(),
-                                    method.getName(),
-                                    testAnnotation.priority());
+                  System.out.printf("Выполняется метод с аннотацией %s с именем: %s и приоритетом: %s%n", testAnnotationName, method.getName(), priority);
                   try {
-                      invokeBeforeAndAfterTestMethod(clazz, BeforeTest.class);
-                      method.invoke(clazz.getConstructor().newInstance());
-                      invokeBeforeAndAfterTestMethod(clazz, AfterTest.class);
-                  } catch (IllegalAccessException |
-                           InvocationTargetException |
-                           NoSuchMethodException |
-                           InstantiationException e) {
+                      if (Objects.nonNull(beforeTestMethod)) {
+                          beforeTestMethod.invoke(object);
+                      }
+                      method.invoke(object);
+                      if (Objects.nonNull(afterTestMethod)) {
+                          afterTestMethod.invoke(object);
+                      }
+                  } catch (Exception e) {
                       throw new RuntimeException(e);
                   }
               });
     }
 
-    private static void invokeBeforeAndAfterTestMethod(Class<?> clazz, Class<? extends Annotation> annotationClass) {
-        Arrays.stream(clazz.getDeclaredMethods())
-              .filter(method -> method.isAnnotationPresent(annotationClass))
-              .forEach(method -> {
-                  try {
-                      method.invoke(clazz.getConstructor().newInstance());
-                  } catch (IllegalAccessException |
-                           InvocationTargetException |
-                           NoSuchMethodException |
-                           InstantiationException e) {
-                      throw new RuntimeException(e);
-                  }
-              });
+    private static Method getBeforeAndAfterTestMethod(Class<?> clazz, Class<? extends Annotation> annotationClass) {
+        return Arrays.stream(clazz.getDeclaredMethods())
+                     .filter(method -> method.isAnnotationPresent(annotationClass))
+                     .findFirst()
+                     .orElse(null);
     }
 
-    public static void invokeMethodWithCsvSourceAnnotation(Class<?> clazz) {
+    public static void invokeMethodWithCsvSourceAnnotation(Class<?> clazz, Object object) {
         Arrays.stream(clazz.getDeclaredMethods())
               .filter(method -> method.isAnnotationPresent(CsvSource.class))
               .forEach(method -> {
@@ -141,11 +126,8 @@ public class TestRunner {
                   }
 
                   try {
-                      method.invoke(clazz.getConstructor().newInstance(), parameterCasts);
-                  } catch (IllegalAccessException |
-                           InvocationTargetException |
-                           NoSuchMethodException |
-                           InstantiationException e) {
+                      method.invoke(object, parameterCasts);
+                  } catch (Exception e) {
                       throw new RuntimeException(e);
                   }
               });
