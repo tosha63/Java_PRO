@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: Create users table
+      author: Anton Shtanko
+      changes:
+        - createTable:
+            remarks: Users
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_users_id
+              - column:
+                  name: username
+                  type: varchar
+                  constraints:
+                    unique: true
+              - column:
+                  name: age
+                  type: int
+
+
+  - changeSet:
+      id: Fill table users
+      author: Anton Shtanko
+      changes:
+        - sql:
+            sql: insert into ${database.defaultSchemaName}.users (username, age)
+              values ('Anton', 30),
+                      ('Petr', 23),
+                      ('Alex', 35),
+                      ('Ivan', 48),
+                      ('Andrey', 28)
