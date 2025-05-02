@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: Add product table
+      author: Anton Shtanko
+      changes:
+        - sql:
+            sql: create type ${database.defaultSchemaName}.e_product_type as enum ('ACCOUNT', 'CARD')
+        - createTable:
+            remarks: Product
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_product_id
+              - column:
+                  name: account_number
+                  type: varchar
+                  constraints:
+                    unique: true
+              - column:
+                  name: balance
+                  type: numeric
+              - column:
+                  name: product_type
+                  type: e_product_type
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_product_user
+                    references: users(id)

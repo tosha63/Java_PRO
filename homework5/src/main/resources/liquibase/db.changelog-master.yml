@@ -1,3 +1,5 @@
 databaseChangeLog:
   - includeAll:
       path: liquibase/init/
+  - includeAll:
+      path: liquibase/products
