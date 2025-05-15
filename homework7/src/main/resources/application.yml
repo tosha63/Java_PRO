@@ -1,0 +1,7 @@
+server:
+  port: 8013
+integrations:
+  product-service-properties:
+    url: "http://localhost:8014/v1/api/products"
+    connect-timeout: 5s
+    read-timeout: 10s
