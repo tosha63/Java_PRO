@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import t1.dto.ProductDto;
 import t1.dto.UpdateProductDto;
@@ -34,6 +35,12 @@ public class ProductController {
     @GetMapping("/all/{userId}")
     public List<ProductDto> getAllProductByUserId(@PathVariable("userId") Long userId) {
         return productService.getAllProductsByUserId(userId);
+    }
+
+    @GetMapping("/{id}/user/{userId}")
+    public ProductDto getProductByProductIdUserId(@PathVariable("id") Long productId,
+                                                  @PathVariable("userId") Long userId) {
+        return productService.getProductByIdAndUserId(productId, userId);
     }
 
     @PostMapping

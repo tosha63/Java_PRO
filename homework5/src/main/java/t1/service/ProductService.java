@@ -46,9 +46,15 @@ public class ProductService {
                                 .toList();
     }
 
+    public ProductDto getProductByIdAndUserId(Long productId, Long userId) {
+        return productRepository.findByIdAndUserId(productId, userId)
+                                .map(productMapper::mapToDto)
+                                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    }
+
     public ProductDto updateProduct(Long id, UpdateProductDto updateProductDto) {
         final var entity = productRepository.findById(id)
-                                         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+                                            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         final var updateProduct = productMapper.map(entity, updateProductDto);
         productRepository.save(updateProduct);
         return productMapper.mapToDto(updateProduct);
