@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: Create limits and operations tables
+      author: Anton Shtanko
+      changes:
+        - createTable:
+            remarks: Limit
+            tableName: limits
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_limits_id
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    unique: true
+              - column:
+                  name: amount_limit
+                  type: numeric
+
+        - createTable:
+            remarks: Operation
+            tableName: operations
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_operations_id
+              - column:
+                  name: operation_id
+                  type: uuid
+                  constraints:
+                    unique: true
+              - column:
+                  name: user_id
+                  type: bigint
+              - column:
+                  name: payment
+                  type: numeric
+
+
+  - changeSet:
+      id: Fill table limits
+      author: Anton Shtanko
+      changes:
+        - sql:
+            sql: insert into ${database.defaultSchemaName}.limits (user_id, amount_limit)
+              values (1, 10000),
+                     (2, 10000),
+                     (3, 10000),
+                     (4, 10000),
+                     (5, 10000)
