@@ -1,0 +1,21 @@
+server:
+  port: 8081
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:25432/postgres
+    username: test
+    password: test
+  jpa:
+    properties:
+      hibernate:
+        default_schema: test
+  liquibase:
+    enabled: true
+    default-schema: test
+    change-log: classpath:liquibase/db.changelog-master.yml
+
+limit:
+  default-amount-limit: 10000
+  scheduled:
+    cron: 0 0 0 * * *
